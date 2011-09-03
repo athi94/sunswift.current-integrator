@@ -1,4 +1,4 @@
-/****************************************************************************
+/***************************************************************************
  *   $Id:: i2c_main.c 4785 2010-09-03 22:39:27Z nxp21346                    $
  *   Project: NXP LPC11xx I2C example
  *
@@ -25,16 +25,25 @@
 #include <arch/uart.h>
 #include <arch/type.h>
 #include <arch/can.h>
+#include <arch/ssp.h>
 #include <arch/i2c.h>
 #include <math.h>
 
 #include <scandal/engine.h> /* for general scandal functions */
 #include <scandal/message.h> /* for TELEM_LOW */
 
-void setup_ports(void) {
+void setup_ports(void) 
+{
 	GPIOInit();
-	GPIOSetDir(2,8,1); //Green LED, Out
-	GPIOSetDir(2,7,1); //Yel LED, Out
+
+	// LEDS
+	GPIOSetDir(2,6,1); //Green LED, Out
+	GPIOSetDir(2,0,1); //Yel LED, Out
+
+	// MCP3909 pins
+	GPIOSetDir(2,PGA,1); // PGA, Out
+	GPIOSetDir(2,nMCLR,1);// nMCLR, Out
+	GPIOSetDir(0,MCP3909_CS,1)// MCP3909_CS, Out
 }
 
 void in_channel_0_handler(int32_t value, uint32_t src_time) {
@@ -45,18 +54,19 @@ int main(void)
 {
 	int i = 0; /* Used in main loop */
 	uint32_t value = 0xaa;
-	setup_ports();
 
+	setup_ports();
 	scandal_init();
 
 	UARTInit(115200);
+	mcp3909_init();
 
 	sc_time_t one_sec_timer = sc_get_timer(); /* Initialise the timer variable */
 	sc_time_t test_in_timer = sc_get_timer(); /* Initialise the timer variable */
 
 	/* Set LEDs to known states, i.e. on */
 	red_led(1);
-	yellow_led(0);
+	yellow_led(1);
 
 	scandal_delay(100); /* wait for the UART clocks to settle */
 

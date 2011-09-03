@@ -2,7 +2,7 @@
 ROOT = ..
 SCANDAL = $(ROOT)/scandal
 ARCH = $(SCANDAL)/src/arch/lpc11c14
-UTILS = ../../$(ROOT)/utils
+UTILS = ../utilities
 LINKER = $(ARCH)/linker
 CMSIS = $(ARCH)/cmsis
 DRIVERS = $(ARCH)/drivers
@@ -171,7 +171,7 @@ program: main.axf
 	@lsusb | grep -q "1fc9:0009"; \
 	if [ $$? -eq 0 ]; then \
 		echo -e "\033[91m[PROGRAM]   detected LPC Expresso in correct mode, attempting program\033[0m"; \
-		$(FLASH_CHIP) -wire=winusb -p$(UC) -flash-load-exec=$(BUILD)/main.axf > /dev/null 2>&1; \
+		$(FLASH_CHIP) -wire=winusb -p$(UC) -flash-load-exec=$(BUILD)/main.axf; \
 	fi
 
 #program using .bin, doesn't seem to work atm
