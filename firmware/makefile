@@ -31,9 +31,9 @@ LINKSCRIPT=lpc1114_flash_can_crp.ld
 #top being required by the CAN controller
 STARTUPSCRIPT = cr_startup_lpc11
 
-OBJECTS  = main.o scandal_obligations.o
+OBJECTS  = main.o mcp3909.o scandal_obligations.o
 OBJECTS += core_cm0.o system_LPC11xx.o leds.o
-OBJECTS += gpio.o timer32.o uart.o can.o i2c.o flash.o
+OBJECTS += gpio.o timer32.o uart.o can.o i2c.o flash.o ssp.o
 OBJECTS += engine.o error.o manager.o maths.o message.o utils.o
 OBJECTS += $(STARTUPSCRIPT).o
 
@@ -71,6 +71,10 @@ main.o: src/main.c
 	@mkdir -p $(BUILD)
 	@echo "[CC] main.c                      this is where your main loop is!"
 	@if [ "$(BUILD)" == "." ]; then echo -e "\033[91mDon't use . as BUILD\033[0m"; exit 1; fi
+	@$(CC) $(CFLAGS) -c -o $(BUILD)/$@ $<
+
+mcp3909.o: src/mcp3909.c
+	@echo "[CC] mcp3909.c       this is where the mcp3909 driver is"
 	@$(CC) $(CFLAGS) -c -o $(BUILD)/$@ $<
 
 scandal_obligations.o: src/scandal_obligations.c
@@ -131,6 +135,10 @@ can.o: $(DRIVERS)/can.c
 
 flash.o: $(DRIVERS)/flash.c
 	@echo "[CC] cmsis/flash.c               this is the LPC flash driver"
+	@$(CC) $(CFLAGS) -c -o $(BUILD)/$@ $<
+
+ssp.o: $(DRIVERS)/ssp.c
+	@echo "[CC] cmsis/ssp.c                 this is the LPC ssp driver"
 	@$(CC) $(CFLAGS) -c -o $(BUILD)/$@ $<
 
 i2c.o: $(DRIVERS)/i2c.c

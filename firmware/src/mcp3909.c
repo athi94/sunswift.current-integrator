@@ -1,8 +1,10 @@
-#include "hardware.h"
-#include "other_spi.h"
-#include "scandal_timer.h"
-#include "scandal_led.h"
-#include "spi_devices.h"
+#include <project/hardware.h>
+#include <scandal/timer.h>
+#include <scandal/led.h>
+
+#include <project/driver_config.h>
+#include <arch/gpio.h>
+#include <arch/ssp.h>
 
 #define MULT_OUT  0xA1
 #define MULT_OUT2 0xA9
@@ -27,41 +29,20 @@ void delay(uint32_t count){
 }
 
 void mcp3909_init(void){
-  init_spi0(); 
+  SSP_IOConfig(1);
+  SSP_Init(1); 
 
   /* Apply a 1s reset pulse to nMCLR */ 
-  ASSERT_NMCLR();
-  delay(500000); 
-  DEASSERT_NMCLR(); 
+  GPIOSetValue(2,nMCLR,0);
+  scandal_naive_delay(20);
+  GPIOSetValue(2,nMCLR,1);
 
-  //yellow_led(1);
-  
-  //delay(50000);
-  //yellow_led(0);
 
-  //  delay(10); 
+  uint8_t mode = DUAL_PRE;
+  SSP_Send(1,&mode,1);
+  GPIOSetValue(0,MCP3909_CS,1);
 
-  /* Should be in dual channel transfer now */ 
-  //yellow_led(1); 
-
-  //ENABLE_MCP3909();    //Doesn't seem to be working. clock frequency also seems low
-  
-
-  //Put something in the buffer
-
-  //delay(10);
-
-  P1OUT &= ~MCP3909_CS;
-
-  TXBUF0 = DUAL_PRE; 
-
-  while((IFG1 & URXIFG0) == 0)
-      ;
-  P1OUT |= MCP3909_CS;
-
-  //DISABLE_MCP3909(); 
-
-  delay(10000); 
+  scandal_naive_delay(100); 
 
 }
 
@@ -69,24 +50,22 @@ void mcp3909_init(void){
 void mcp3909_sample(int16_t* chan0, int16_t* chan1){
   uint8_t bytes[4]; 
 
-  /* Ok. Now we can wait for a DR pulse. */
-  P3SEL &=~(SOMI0); 
-  ENABLE_MCP3909(); 
-  while((P3IN & SOMI0) == 0);
-  while((P3IN & SOMI0) != 0);
-  P3SEL |= SOMI0; 
- 
-  bytes[0] = spi0_transfer(0x00); 
-  bytes[1] = spi0_transfer(0x00); 
-  bytes[2] = spi0_transfer(0x00); 
-  bytes[3] = spi0_transfer(0x00); 
+  GPIOSetValue(0,MCP3909_CS,0);
 
-  DISABLE_MCP3909(); 
+  LPC_IOCON->PIO2_2 &= ~0x07; //set P2.2 to GPIO mode, to read dataready from MCP3909
+  while(GPIOGetValue(2, 2) == 0);
+  while(GPIOGetValue(2, 2) != 0);
+  LPC_IOCON->PIO2_2 |= 0x02; //set P2.2 to MISO mode, to read actual data from MCP3909
+ 
+  scandal_naive_delay(100);
+  SSP_Receive(1, bytes, 4);
+
+  GPIOSetValue(0,MCP3909_CS,1);
 
   *chan1 = 
     ((int16_t)bytes[0] << 8 | 
      (int16_t)bytes[1]);
   *chan0 = 
     ((int16_t)bytes[2] << 8 | 
-     (int16_t)bytes[3]); 
+     (int16_t)bytes[3]);
 }

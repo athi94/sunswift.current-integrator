@@ -14,10 +14,10 @@
 
 /* ADC channel definitions */
 #define	TEMP_MEAS		5
-#define	12V_MEAS		1
+//#define	12V_MEAS		1
 
 /* Useful macros */ 
-#define ASSERT_NMCLR()   GPIOSetValue(2,nMCLR,0);
-#define DEASSERT_NMCLR() GPIOSetValue(2,nMCLR,1);
+//#define ASSERT_NMCLR()   GPIOSetValue(2,nMCLR,0);
+//#define DEASSERT_NMCLR() GPIOSetValue(2,nMCLR,1);
 
 

@@ -1,9 +1,9 @@
 /***************************************************************************
- *   $Id:: i2c_main.c 4785 2010-09-03 22:39:27Z nxp21346                    $
- *   Project: NXP LPC11xx I2C example
+ *   Author: Alexandra Boulgakov                   
+ *   Project: Current Integrator
  *
  *   Description:
- *     This file contains I2C test modules, main entry, to test I2C APIs.
+ *   Current integrator code.
  *
  ****************************************************************************
  * Software that is described herein is for illustrative purposes only
@@ -19,6 +19,8 @@
 ****************************************************************************/
 #include <project/driver_config.h>
 #include <project/target_config.h>
+#include <project/hardware.h>
+#include <project/mcp3909.h>
 
 #include <arch/timer32.h>
 #include <arch/gpio.h>
@@ -26,7 +28,7 @@
 #include <arch/type.h>
 #include <arch/can.h>
 #include <arch/ssp.h>
-#include <arch/i2c.h>
+//#include <arch/i2c.h>
 #include <math.h>
 
 #include <scandal/engine.h> /* for general scandal functions */
@@ -38,12 +40,12 @@ void setup_ports(void)
 
 	// LEDS
 	GPIOSetDir(2,6,1); //Green LED, Out
-	GPIOSetDir(2,0,1); //Yel LED, Out
+	GPIOSetDir(2,0,0); //Yel LED, Out
 
 	// MCP3909 pins
 	GPIOSetDir(2,PGA,1); // PGA, Out
 	GPIOSetDir(2,nMCLR,1);// nMCLR, Out
-	GPIOSetDir(0,MCP3909_CS,1)// MCP3909_CS, Out
+	GPIOSetDir(0,MCP3909_CS,1);// MCP3909_CS, Out
 }
 
 void in_channel_0_handler(int32_t value, uint32_t src_time) {
@@ -53,13 +55,15 @@ void in_channel_0_handler(int32_t value, uint32_t src_time) {
 int main(void)
 {
 	int i = 0; /* Used in main loop */
-	uint32_t value = 0xaa;
+	uint16_t chan0 = 0x123;
+	uint16_t chan1 = 0x123;
+	uint32_t value = 0x0;
 
 	setup_ports();
 	scandal_init();
 
-	UARTInit(115200);
 	mcp3909_init();
+	UARTInit(115200);
 
 	sc_time_t one_sec_timer = sc_get_timer(); /* Initialise the timer variable */
 	sc_time_t test_in_timer = sc_get_timer(); /* Initialise the timer variable */
@@ -84,39 +88,38 @@ int main(void)
 		 * the number of errors and the version of scandal */
 		handle_scandal();
 
+		mcp3909_sample(&chan0, &chan1);
+
+		scandal_send_channel(TELEM_LOW, /* priority */
+								1,      /* channel num */
+								(uint32_t)chan0    /* value */
+		);
+		scandal_send_channel(TELEM_LOW, /* priority */
+								2,      /* channel num */
+								(uint32_t)chan1    /* value */
+		);
+
 		/* Send a UART message and flash an LED every second */
 		if(sc_get_timer() >= one_sec_timer + 1000) {
 			/* Send the message */
 			UART_printf("This is the 1 second timer... %d\n\r", i++);
+			UART_printf("chan 0: %d chan 1: %d chan 0: 0x%x chan 1: 0x%x\n\r", chan0, chan1, chan0, chan1);
+			/* Send a channel message with a ADC value at low priority on channel 0 */
 
-			/* Send a channel message with a blerg value at low priority on channel 0 */
 			scandal_send_channel(TELEM_LOW, /* priority */
-									0,      /* channel num */
-									value    /* value */
+									1,      /* channel num */
+									(uint32_t)chan0    /* value */
+			);
+			scandal_send_channel(TELEM_LOW, /* priority */
+									2,      /* channel num */
+									(uint32_t)chan1    /* value */
 			);
 
 			/* Twiddle the LEDs */
-			toggle_yellow_led();
 			toggle_red_led();
 
 			/* Update the timer */
 			one_sec_timer = sc_get_timer();
 		}
-
-		if(scandal_get_in_channel_rcvd_time(TEMPLATE_TEST_IN) > test_in_timer) {
-
-			value = scandal_get_in_channel_value(TEMPLATE_TEST_IN);
-
-			UART_printf("I received a channel message in the main loop on in_channel 0, value  %d at time %d\n\r", value, scandal_get_in_channel_rcvd_time(TEMPLATE_TEST_IN));
-
-			if(scandal_get_in_channel_value(TEMPLATE_TEST_IN) == 1) {
-				toggle_red_led();
-			} else {
-				toggle_yellow_led();
-			}
-
-			test_in_timer = scandal_get_in_channel_rcvd_time(TEMPLATE_TEST_IN);
-		}
-
 	}
 }
