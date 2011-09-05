@@ -16,11 +16,11 @@
 #ifdef THIS_DEVICE_TYPE
 #error "Device type multiply defined (redefined to MINING2)"
 #endif
-#define THIS_DEVICE_TYPE       TEMPLATE
+#define THIS_DEVICE_TYPE       CURRENTINT
 
 /* Number of channels */
-#define NUM_IN_CHANNELS		TEMPLATE_NUM_IN_CHANNELS
-#define NUM_OUT_CHANNELS 	TEMPLATE_NUM_OUT_CHANNELS
+#define NUM_IN_CHANNELS		CURRENTINT_NUM_IN_CHANNELS
+#define NUM_OUT_CHANNELS 	CURRENTINT_NUM_OUT_CHANNELS
 
 /* Size of send/receive buffers */
 #define CAN_TX_BUFFER_BITS	4

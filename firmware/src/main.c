@@ -28,7 +28,6 @@
 #include <arch/type.h>
 #include <arch/can.h>
 #include <arch/ssp.h>
-//#include <arch/i2c.h>
 #include <math.h>
 
 #include <scandal/engine.h> /* for general scandal functions */
@@ -46,10 +45,6 @@ void setup_ports(void)
 	GPIOSetDir(2,PGA,1); // PGA, Out
 	GPIOSetDir(2,nMCLR,1);// nMCLR, Out
 	GPIOSetDir(0,MCP3909_CS,1);// MCP3909_CS, Out
-}
-
-void in_channel_0_handler(int32_t value, uint32_t src_time) {
-	UART_printf("in_channel_0_handler got called with value %d time at source %d\n\r", value, src_time);
 }
 
 int main(void)
@@ -74,13 +69,6 @@ int main(void)
 
 	scandal_delay(100); /* wait for the UART clocks to settle */
 
-	/* Display welcome header over UART */
-	UART_printf("Welcome to the template project! This is coming out over UART1\n\r");
-	UART_printf("The 2 debug LEDs should blink at a rate of 1HZ\n\r");
-	UART_printf("If you configure the in channel 0, I should print a message upon receipt of such a channel message\n\r");
-
-	scandal_register_in_channel_handler(0, &in_channel_0_handler);
-
 	/* This is the main loop, go for ever! */
 	while (1) {
 		/* This checks whether there are pending requests from CAN, and sends a heartbeat message.
@@ -89,15 +77,6 @@ int main(void)
 		handle_scandal();
 
 		mcp3909_sample(&chan0, &chan1);
-
-		scandal_send_channel(TELEM_LOW, /* priority */
-								1,      /* channel num */
-								(uint32_t)chan0    /* value */
-		);
-		scandal_send_channel(TELEM_LOW, /* priority */
-								2,      /* channel num */
-								(uint32_t)chan1    /* value */
-		);
 
 		/* Send a UART message and flash an LED every second */
 		if(sc_get_timer() >= one_sec_timer + 1000) {
