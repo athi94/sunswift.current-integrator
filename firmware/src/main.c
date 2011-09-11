@@ -36,17 +36,18 @@
 /* global variables */
 int i = 0; /* Used in main loop */
 int16_t chan0 = 0, chan1 = 0;
-int64_t chan0_acc = 0, chan1_acc = 0;
-int64_t chan0_acc_old = 0, chan1_acc_old =0;
-int64_t integral = 0;
+int64_t chan0_acc = 0, chan1_acc = 0; 
+int64_t chan0_avg = 0, chan1_avg = 0, power_avg = 0;
+int64_t chan0_avg_old = 0, power_avg_old = 0; // for integration
+int64_t chan0_integral = 0;
+int64_t power_integral = 0;
 int64_t samples = 0;
 
 /*---------------------------------------------------------------------------*/
 
 /* Helper function defs */
-void prepare_data_for_sending();
 void send_data();
-void integrate(int64_t *integral, int64_t *cur_value, int64_t *prev_value, int64_t time_interval);
+void int_trapz(int64_t *integral, int64_t *cur_val, int64_t *prev_val, int64_t time);
 /*---------------------------------------------------------------------------*/
 
 /* Setup functions */
@@ -74,10 +75,16 @@ int main(void)
 	mcp3909_init();
 	UARTInit(115200);
 
-	sc_time_t one_sec_timer = sc_get_timer(); /* Initialise the timer variable */
-	sc_time_t test_in_timer = sc_get_timer(); /* Initialise the timer variable */
+	/* Initialise timers */
+	sc_time_t one_sec_timer = sc_get_timer();
+	sc_time_t test_in_timer = sc_get_timer();
+
+	sc_time_t data_integrate_timer = sc_get_timer();
 	sc_time_t data_send_timer = sc_get_timer();
 	sc_time_t data_save_timer = sc_get_timer();
+
+	/* Read in previously saved integrated values */
+	sc_user_eeprom_read_block(0, &chan0_integral, 8);
 
 	/* Set LEDs to known states, i.e. on */
 	red_led(1);
@@ -92,8 +99,8 @@ int main(void)
 		 * the number of errors and the version of scandal */
 		handle_scandal();
 
-		/* Get current and voltage samples. Sampling happens at the MCU clock frequency and the
-		 * values are later averaged over the DATA_SEND_INTERVAL */
+		/* Get current and voltage samples. Sampling happens once every main loop, but
+		 * the values are only averaged every DATA_INTEGRATE_INTERVAL */
 		mcp3909_sample(&chan0, &chan1);
 		chan0_acc += chan0;
 		chan1_acc += chan1;
@@ -111,70 +118,104 @@ int main(void)
 	
 		}
 
-		/* Process and send data every DATA_SEND_INTERVAL */ 
-		if (sc_get_timer() >= data_send_timer + DATA_SEND_INTERVAL) {
-		
-			prepare_data_for_sending();
-			send_data();
+		/* Average samples and add to integrals every DATA_INTEGRATE_INTERVAL */
+		if (sc_get_timer() >= data_integrate_timer + DATA_INTEGRATE_INTERVAL) {
+			
+			/*** Averaging stuff ***/
+			/* chan0_acc and chan1_acc contain accumulated values when passed to this function
+			 * and the average value after it is executed */
+			scandal_get_scaleaverage64(CURRENTINT_CURRENT, &chan0_acc, &samples);
+			scandal_get_scaleaverage64(CURRENTINT_VOLTAGE, &chan1_acc, &samples);
 
-			/* Look we're doing stuff */
-			toggle_yellow_led();
-
-			/* Reset accumulated values, sample counter and timer */
-			chan0_acc_old = chan0_acc;
-			chan1_acc_old = chan1_acc;
+			/* move average values to new variables to avoid confusion and reset 
+			 * accumulated variables and samples */			
+			chan0_avg = chan0_acc;
+			chan1_avg = chan1_acc;
 			chan0_acc = 0;
 			chan1_acc = 0;
 			samples = 0;
+
+			/* Get average power. [mA][mV]=[uW] so need to divie by 1000 to get [mW] */
+			power_avg = (chan0_avg * chan1_avg)/1000;
+
+			/*** Integration stuff ***/
+			//int_trapz(&chan0_integral, &chan0_avg, &chan0_avg_old, DATA_INTEGRATE_INTERVAL);
+			//int_trapz(&power_integral, &power_avg, &power_avg_old, DATA_INTEGRATE_INTERVAL);
+			chan0_integral += chan0_avg;
+			power_integral += power_avg;
+
+			/* Move new average values to old for next trapezoidal integration */
+			chan0_avg_old = chan0_avg / (1000/DATA_INTEGRATE_INTERVAL);
+			power_avg_old = power_avg / (1000/DATA_INTEGRATE_INTERVAL);
+
+			data_integrate_timer = sc_get_timer();
+
+		}
+
+		/* Process and send data every DATA_SEND_INTERVAL */ 
+		if (sc_get_timer() >= data_send_timer + DATA_SEND_INTERVAL) {
+
+			send_data();
+
+			/* Look we're sending stuff */
+			toggle_yellow_led();
+
 			data_send_timer = sc_get_timer();
 		}
 
 		/* Save integrated values to flash every DATA_SAVE_INTERVAL */
 		if (sc_get_timer() >= data_save_timer + DATA_SAVE_INTERVAL) {
-			/*Stuff*/		
-		}
+			sc_user_eeprom_write_block(0, &chan0_integral, 8);					
 
-	}
-}
-
-void prepare_data_for_sending()
-{
-
-	/* Deal with CURRENT and VOLTAGE channels first */
-	/* Get average values for current and voltage*/
+			/* Current and voltage */
+			scandal_send_channel(TELEM_LOW, 			 	/* priority */
+								5,     	/* channel num */
+								DATA_SAVE_INTERVAL		 	/* value */
 		
-	scandal_get_scaleaverage64(CURRENTINT_CURRENT, &chan0_acc, &samples);
-	scandal_get_scaleaverage64(CURRENTINT_VOLTAGE, &chan1_acc, &samples);
-
-	/* Get updated integrated value for current and voltage */
-	integrate(&integral, &chan0_acc, &chan0_acc_old, DATA_SEND_INTERVAL);
-	
-	/* Deal with POWER channel */
-
-	/* Deal with TEMPERATURE channel */
+			);
+			
+			data_save_timer = sc_get_timer();
+		}
+	}
 }
 
 void send_data()
 {			
-	scandal_send_channel(TELEM_LOW, /* priority */
-						CURRENTINT_CURRENT,      /* channel num */
-						chan0_acc    /* value */
+
+	/* Current and voltage */
+	scandal_send_channel(TELEM_LOW, 			 	/* priority */
+						CURRENTINT_CURRENT,     	/* channel num */
+						chan0_avg    			 	/* value */
 	);
 
-	scandal_send_channel(TELEM_LOW, /* priority */
-						CURRENTINT_VOLTAGE,      /* channel num */
-						chan1    /* value */
+	scandal_send_channel(TELEM_LOW, 				/* priority */
+						CURRENTINT_VOLTAGE,      	/* channel num */
+						chan1_avg    				/* value */
 	);
 	
-	scandal_send_channel(TELEM_LOW, /* priority */
+
+	/* INT_SCALING is necessary to convert from mA*ms to Ah. */
+	scandal_send_channel(TELEM_LOW, 				/* priority */
 						2,      /* channel num */
-						integral/3600000    /* value */
+						chan0_integral/3600 	/* value */
+	);
+
+	scandal_send_channel(TELEM_LOW, 				/* priority */
+						3,      		/* channel num */
+						power_avg 	/* value */
+	);
+
+	/* INT_SCALING is necessary to convert from mW*ms to Wh. */
+	scandal_send_channel(TELEM_LOW, 				/* priority */
+						4,      	/* channel num */
+						power_integral/3600 	/* value */
 	);
 }
 
-
-void integrate(int64_t *integral, int64_t *cur_value, int64_t *prev_value, int64_t time_interval)
+/* Calculates trapezoidal integral between two values and adds it to the integral */
+void int_trapz(int64_t *integral, int64_t *cur_val, int64_t *prev_val, int64_t time)
 {
-	int64_t increment = (*cur_value + *prev_value) * time_interval;
-	*integral = *integral + (increment << 1);
+	/* Values are in mA and time is in ms */
+	int64_t increment = ((*cur_val + *prev_val)/2) * (1000/time);
+	*integral = *integral + increment;
 }
