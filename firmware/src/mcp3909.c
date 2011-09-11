@@ -37,6 +37,7 @@ void mcp3909_init(void){
   scandal_naive_delay(20);
   GPIOSetValue(2,nMCLR,1);
 
+  GPIOSetValue(2,PGA,1);
 
   uint8_t mode = DUAL_PRE;
   SSP_Send(1,&mode,1);

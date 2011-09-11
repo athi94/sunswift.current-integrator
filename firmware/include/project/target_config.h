@@ -21,13 +21,16 @@
  * use without further testing or modification.
 ****************************************************************************/
 
-#define RED_LED_PORT 2		// Port for led
-#define RED_LED_BIT 6		// Bit on port for led
-#define YELLOW_LED_PORT 2		// Port for led
-#define YELLOW_LED_BIT 0		// Bit on port for led
-#define LED_TOGGLE_TICKS 100 // 100 ticks = 1 Hz flash rate
-#define FAST_LED_TOGGLE_TICKS 25 // 100 ticks = 1 Hz flash rate
-#define COUNT_MAX		3 // how high to count on the LED display
+#define RED_LED_PORT 				2		// Port for led
+#define RED_LED_BIT 				6		// Bit on port for led
+#define YELLOW_LED_PORT 			2		// Port for led
+#define YELLOW_LED_BIT 				0		// Bit on port for led
+#define LED_TOGGLE_TICKS 		  	100 	// 100 ticks = 1 Hz flash rate
+#define FAST_LED_TOGGLE_TICKS 		25 		// 100 ticks = 1 Hz flash rate
+#define COUNT_MAX					3 		// how high to count on the LED display
+
+#define DATA_SEND_INTERVAL			1000	// 500ms
+#define DATA_SAVE_INTERVAL			60000	// 1 minute
 
 /*********************************************************************************
 **                            End Of File

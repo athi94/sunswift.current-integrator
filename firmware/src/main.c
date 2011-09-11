@@ -1,4 +1,4 @@
-/***************************************************************************
+/****************************************************************************
  *   Author: Alexandra Boulgakov                   
  *   Project: Current Integrator
  *
@@ -33,6 +33,23 @@
 #include <scandal/engine.h> /* for general scandal functions */
 #include <scandal/message.h> /* for TELEM_LOW */
 
+/* global variables */
+int i = 0; /* Used in main loop */
+int16_t chan0 = 0, chan1 = 0;
+int64_t chan0_acc = 0, chan1_acc = 0;
+int64_t chan0_acc_old = 0, chan1_acc_old =0;
+int64_t integral = 0;
+int64_t samples = 0;
+
+/*---------------------------------------------------------------------------*/
+
+/* Helper function defs */
+void prepare_data_for_sending();
+void send_data();
+void integrate(int64_t *integral, int64_t *cur_value, int64_t *prev_value, int64_t time_interval);
+/*---------------------------------------------------------------------------*/
+
+/* Setup functions */
 void setup_ports(void) 
 {
 	GPIOInit();
@@ -47,21 +64,20 @@ void setup_ports(void)
 	GPIOSetDir(0,MCP3909_CS,1);// MCP3909_CS, Out
 }
 
+/*---------------------------------------------------------------------------*/
+
 int main(void)
 {
-	int i = 0; /* Used in main loop */
-	uint16_t chan0 = 0x123;
-	uint16_t chan1 = 0x123;
-	uint32_t value = 0x0;
 
 	setup_ports();
 	scandal_init();
-
 	mcp3909_init();
 	UARTInit(115200);
 
 	sc_time_t one_sec_timer = sc_get_timer(); /* Initialise the timer variable */
 	sc_time_t test_in_timer = sc_get_timer(); /* Initialise the timer variable */
+	sc_time_t data_send_timer = sc_get_timer();
+	sc_time_t data_save_timer = sc_get_timer();
 
 	/* Set LEDs to known states, i.e. on */
 	red_led(1);
@@ -76,29 +92,89 @@ int main(void)
 		 * the number of errors and the version of scandal */
 		handle_scandal();
 
+		/* Get current and voltage samples. Sampling happens at the MCU clock frequency and the
+		 * values are later averaged over the DATA_SEND_INTERVAL */
 		mcp3909_sample(&chan0, &chan1);
+		chan0_acc += chan0;
+		chan1_acc += chan1;
+		samples++;
 
-		/* Send a UART message and flash an LED every second */
+
+		/* Flash an LED every second */
 		if(sc_get_timer() >= one_sec_timer + 1000) {
-			/* Send the message */
-			UART_printf("This is the 1 second timer... %d\n\r", i++);
-			UART_printf("chan 0: %d chan 1: %d chan 0: 0x%x chan 1: 0x%x\n\r", chan0, chan1, chan0, chan1);
-			/* Send a channel message with a ADC value at low priority on channel 0 */
-
-			scandal_send_channel(TELEM_LOW, /* priority */
-									1,      /* channel num */
-									(uint32_t)chan0    /* value */
-			);
-			scandal_send_channel(TELEM_LOW, /* priority */
-									2,      /* channel num */
-									(uint32_t)chan1    /* value */
-			);
 
 			/* Twiddle the LEDs */
 			toggle_red_led();
 
 			/* Update the timer */
 			one_sec_timer = sc_get_timer();
+	
 		}
+
+		/* Process and send data every DATA_SEND_INTERVAL */ 
+		if (sc_get_timer() >= data_send_timer + DATA_SEND_INTERVAL) {
+		
+			prepare_data_for_sending();
+			send_data();
+
+			/* Look we're doing stuff */
+			toggle_yellow_led();
+
+			/* Reset accumulated values, sample counter and timer */
+			chan0_acc_old = chan0_acc;
+			chan1_acc_old = chan1_acc;
+			chan0_acc = 0;
+			chan1_acc = 0;
+			samples = 0;
+			data_send_timer = sc_get_timer();
+		}
+
+		/* Save integrated values to flash every DATA_SAVE_INTERVAL */
+		if (sc_get_timer() >= data_save_timer + DATA_SAVE_INTERVAL) {
+			/*Stuff*/		
+		}
+
 	}
+}
+
+void prepare_data_for_sending()
+{
+
+	/* Deal with CURRENT and VOLTAGE channels first */
+	/* Get average values for current and voltage*/
+		
+	scandal_get_scaleaverage64(CURRENTINT_CURRENT, &chan0_acc, &samples);
+	scandal_get_scaleaverage64(CURRENTINT_VOLTAGE, &chan1_acc, &samples);
+
+	/* Get updated integrated value for current and voltage */
+	integrate(&integral, &chan0_acc, &chan0_acc_old, DATA_SEND_INTERVAL);
+	
+	/* Deal with POWER channel */
+
+	/* Deal with TEMPERATURE channel */
+}
+
+void send_data()
+{			
+	scandal_send_channel(TELEM_LOW, /* priority */
+						CURRENTINT_CURRENT,      /* channel num */
+						chan0_acc    /* value */
+	);
+
+	scandal_send_channel(TELEM_LOW, /* priority */
+						CURRENTINT_VOLTAGE,      /* channel num */
+						chan1    /* value */
+	);
+	
+	scandal_send_channel(TELEM_LOW, /* priority */
+						2,      /* channel num */
+						integral/3600000    /* value */
+	);
+}
+
+
+void integrate(int64_t *integral, int64_t *cur_value, int64_t *prev_value, int64_t time_interval)
+{
+	int64_t increment = (*cur_value + *prev_value) * time_interval;
+	*integral = *integral + (increment << 1);
 }
