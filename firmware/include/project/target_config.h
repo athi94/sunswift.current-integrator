@@ -29,11 +29,11 @@
 #define FAST_LED_TOGGLE_TICKS 		25 		// 100 ticks = 1 Hz flash rate
 #define COUNT_MAX					3 		// how high to count on the LED display
 
-#define DATA_SEND_INTERVAL			1000	// 1000ms
-#define DATA_SAVE_INTERVAL			10000	// 1 minute
-#define DATA_INTEGRATE_INTERVAL		1000		// 500ms (MUST BE SMALLER THAN DATA_SEND_INTERVAL)
+#define DATA_SEND_INTERVAL			500		// 500ms
+#define DATA_SAVE_INTERVAL			600000	// 10 minutes
+#define DATA_INTEGRATE_INTERVAL		100		// 100ms (MUST BE SMALLER THAN DATA_SEND_INTERVAL)
 
-#define	INT_SCALING					(3600000/DATA_INTEGRATE_INTERVAL)
+#define RESET_INTEGRAL				1
 /*********************************************************************************
 **                            End Of File
 *********************************************************************************/

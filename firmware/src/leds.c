@@ -38,9 +38,9 @@
 
 void red_led(u08 on) {
 	if (on)
-		GPIOSetValue(2,6,0);
+		GPIO_SetValue(2,6,0);
 	else
-		GPIOSetValue(2,6,1);
+		GPIO_SetValue(2,6,1);
 }
 
 void toggle_red_led(void) {
@@ -49,9 +49,9 @@ void toggle_red_led(void) {
 
 void yellow_led(u08 on) {
 	if (on)
-		GPIOSetValue(2,0,0);
+		GPIO_SetValue(2,0,0);
 	else
-		GPIOSetValue(2,0,1);
+		GPIO_SetValue(2,0,1);
 }
 
 void toggle_yellow_led(void) {

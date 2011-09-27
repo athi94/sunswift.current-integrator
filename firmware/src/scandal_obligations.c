@@ -10,10 +10,14 @@
 #include <scandal/obligations.h>
 #include <scandal/error.h>
 #include <scandal/devices.h>
-#include <scandal/led.h>
+#include <scandal/leds.h>
+
+#include <cmsis/LPC11xx.h>
+#include <arch/types.h>
+#include <cmsis/core_cm0.h>
 
 void scandal_reset_node(void){
-
+	NVIC_SystemReset();
 }
 
 void scandal_user_do_first_run(void) {

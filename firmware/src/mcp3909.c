@@ -1,6 +1,7 @@
 #include <project/hardware.h>
 #include <scandal/timer.h>
-#include <scandal/led.h>
+#include <scandal/leds.h>
+#include <scandal/utils.h>
 
 #include <project/driver_config.h>
 #include <arch/gpio.h>
@@ -33,15 +34,15 @@ void mcp3909_init(void){
   SSP_Init(1); 
 
   /* Apply a 1s reset pulse to nMCLR */ 
-  GPIOSetValue(2,nMCLR,0);
+  GPIO_SetValue(2,nMCLR,0);
   scandal_naive_delay(20);
-  GPIOSetValue(2,nMCLR,1);
+  GPIO_SetValue(2,nMCLR,1);
 
-  GPIOSetValue(2,PGA,1);
+  GPIO_SetValue(2,PGA,0);
 
   uint8_t mode = DUAL_PRE;
   SSP_Send(1,&mode,1);
-  GPIOSetValue(0,MCP3909_CS,1);
+  GPIO_SetValue(0,MCP3909_CS,1);
 
   scandal_naive_delay(100); 
 
@@ -51,17 +52,17 @@ void mcp3909_init(void){
 void mcp3909_sample(int16_t* chan0, int16_t* chan1){
   uint8_t bytes[4]; 
 
-  GPIOSetValue(0,MCP3909_CS,0);
+  GPIO_SetValue(0,MCP3909_CS,0);
 
   LPC_IOCON->PIO2_2 &= ~0x07; //set P2.2 to GPIO mode, to read dataready from MCP3909
-  while(GPIOGetValue(2, 2) == 0);
-  while(GPIOGetValue(2, 2) != 0);
+  while(GPIO_GetValue(2, 2) == 0);
+  while(GPIO_GetValue(2, 2) != 0);
   LPC_IOCON->PIO2_2 |= 0x02; //set P2.2 to MISO mode, to read actual data from MCP3909
  
   scandal_naive_delay(100);
   SSP_Receive(1, bytes, 4);
 
-  GPIOSetValue(0,MCP3909_CS,1);
+  GPIO_SetValue(0,MCP3909_CS,1);
 
   *chan1 = 
     ((int16_t)bytes[0] << 8 | 
