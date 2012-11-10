@@ -94,6 +94,8 @@ int main(void)
 	setup_ports();
 	scandal_init();
 	mcp3909_init();
+	
+	int mcp3909_status = 0;
 
 	UART_Init(115200);
 
@@ -127,12 +129,20 @@ int main(void)
 
 		/* Get current and voltage samples. Sampling happens once every main loop, but
 		 * the values are only averaged every DATA_INTEGRATE_INTERVAL */
-		mcp3909_sample(&chan0, &chan1);
+		mcp3909_status = mcp3909_sample(&chan0, &chan1);
+		if (mcp3909_status == MCP3909_FAIL){
+		  UART_printf("MCP_FAIL\r\n");
+		  mcp3909_init();
+		} else if(mcp3909_status == MCP3909_SUCCESS){
+		  //UART_printf("SUCCESS c1=%d c2 =%d \r\n", chan0, chan1);
+		}
+		  		UART_printf("1 %d %d %d %d\r\n", chan0_acc, chan1_acc, samples0, samples1);
+
 		chan0_acc += chan0;
 		chan1_acc += chan1;
 		samples0++;
 		samples1++;
-
+		UART_printf("2 %d %d %d %d\r\n", chan0_acc, chan1_acc, samples0, samples1);
 
 		/* Flash an LED every second */
 		if(sc_get_timer() >= one_sec_timer + 1000) {
@@ -140,7 +150,7 @@ int main(void)
 			/* Twiddle the LEDs */
 			toggle_red_led();
 
-			UART_printf("time = %d\r\n", (int)one_sec_timer);
+			UART_printf("time = %d, int_t = %d, send_t = %d, save_t = %d\r\n", (int)one_sec_timer, (int)data_integrate_timer, (int)data_send_timer, (int)data_save_timer);
 
 			/* Update the timer */
 			one_sec_timer = sc_get_timer();
@@ -175,6 +185,8 @@ int main(void)
 			/* Move new average values to old for next trapezoidal integration */
 			//chan0_avg_old = chan0_avg;
 			//power_avg_old = power_avg;
+			
+			//UART_printf("INT\r\n"); //Happens very often so lets comment this out for now!
 
 			data_integrate_timer = sc_get_timer();
 
@@ -195,7 +207,7 @@ int main(void)
 
 			/* Look we're sending stuff */
 			toggle_yellow_led();
-
+			UART_printf("SEND\r\n");
 			data_send_timer = sc_get_timer();
 		}
 
@@ -215,6 +227,7 @@ int main(void)
 			
 			data_save_timer = sc_get_timer();
 		}
+
 
 		/* Feed the watchdog */
 		//WDTFeed();
