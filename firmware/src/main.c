@@ -11,6 +11,7 @@
 #include <project/hardware.h>
 #include <project/mcp3909.h>
 #include <project/scandal_config.h>
+#include <project/fm24cl64.h>
 
 #include <arch/timer.h>
 #include <arch/gpio.h>
@@ -63,7 +64,7 @@ void setup_ports(void)
 
 	// LEDS
 	GPIO_SetDir(2,6,1); //Green LED, Out
-	GPIO_SetDir(2,0,0); //Yel LED, Out
+	GPIO_SetDir(2,0,1); //Yel LED, Out
 
 	// MCP3909 pins
 	GPIO_SetDir(2,PGA,1); // PGA, Out
@@ -99,6 +100,9 @@ int main(void)
 
 	UART_Init(115200);
 
+    // Init FM24CL64, set argument to 1 to reset memory, 0 to keep memory
+    memInit(1);
+    
 	/* Initialise timers */
 	sc_time_t one_sec_timer = sc_get_timer();
 
@@ -136,13 +140,13 @@ int main(void)
 		} else if(mcp3909_status == MCP3909_SUCCESS){
 		  //UART_printf("SUCCESS c1=%d c2 =%d \r\n", chan0, chan1);
 		}
-		  		UART_printf("1 %d %d %d %d\r\n", chan0_acc, chan1_acc, samples0, samples1);
+		//UART_printf("1 %d %d %d %d\r\n", (int)chan0_acc, (int)chan1_acc, (int)samples0, (int)samples1);
 
 		chan0_acc += chan0;
 		chan1_acc += chan1;
 		samples0++;
 		samples1++;
-		UART_printf("2 %d %d %d %d\r\n", chan0_acc, chan1_acc, samples0, samples1);
+		//UART_printf("2 %d %d %d %d\r\n", (int)chan0_acc, (int)chan1_acc, (int)samples0, (int)samples1);
 
 		/* Flash an LED every second */
 		if(sc_get_timer() >= one_sec_timer + 1000) {
@@ -207,7 +211,7 @@ int main(void)
 
 			/* Look we're sending stuff */
 			toggle_yellow_led();
-			UART_printf("SEND\r\n");
+			//UART_printf("SEND\r\n");
 			data_send_timer = sc_get_timer();
 		}
 
@@ -216,9 +220,25 @@ int main(void)
 			
 			writebuf[0] = chan0_integral;
 			writebuf[1] = power_integral;
-			
+            
 			sc_user_eeprom_write_block(0, (uint8_t *)writebuf, 16);
-	
+            
+            // Start FM24CL64 Save Proc
+            // Review FM24CL64.h for details
+            // memWrite (startAddress, writeLength, writebuf)
+            memWriteSeq(memGetPointer(), 16, (uint8_t *)writebuf);
+            
+            UART_printf("chan0_int = %d | power_int = %d\r\n", (int)(writebuf[0]), (int)(writebuf[1]));
+            // Read Data for Debug
+            uint64_t *readbuf = (uint64_t *)memRead(0x02, 64);
+            
+            uint8_t i;
+            for(i = 0; i < 8; i+=2) {
+                UART_printf("channel0 = %d  |  ", (int)(readbuf[i]));
+                UART_printf("power = %d\r\n", (int)(readbuf[i + 1]));
+            }
+            
+            
 			/* Acknowledge the fact that we just did a flash write */
 			scandal_send_channel(TELEM_LOW, 			 	/* priority */
 								5,     						/* channel num */

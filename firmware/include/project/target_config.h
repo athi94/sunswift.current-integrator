@@ -30,7 +30,7 @@
 #define COUNT_MAX					3 		// how high to count on the LED display
 
 #define DATA_SEND_INTERVAL			500		// 500ms
-#define DATA_SAVE_INTERVAL			600000	// 10 minutes
+#define DATA_SAVE_INTERVAL			1000	// 10 minutes 600000
 #define DATA_INTEGRATE_INTERVAL		100		// 100ms (MUST BE SMALLER THAN DATA_SEND_INTERVAL)
 
 #define RESET_INTEGRAL				1
