@@ -101,7 +101,7 @@ int main(void)
 	UART_Init(115200);
 
     // Init FM24CL64, set argument to 1 to reset memory, 0 to keep memory
-    memInit(1);
+    memInit(0);
     
 	/* Initialise timers */
 	sc_time_t one_sec_timer = sc_get_timer();
@@ -111,8 +111,14 @@ int main(void)
 	sc_time_t data_save_timer = sc_get_timer();
 
 	/* Read in previously saved integrated values */
-	sc_user_eeprom_read_block(0, (uint8_t *)&chan0_integral, 8);
-    sc_user_eeprom_read_block(8, (uint8_t *)&power_integral, 8);
+    //sc_user_eeprom_read_block(0, (uint8_t *)&chan0_integral, 8);
+    //sc_user_eeprom_read_block(8, (uint8_t *)&power_integral, 8);
+    
+    uint16_t savePointer = memGetPointer();
+    chan0_integral = ( ((uint64_t *)memRead(savePointer - 16, 8))[0] );
+    power_integral = ( ((uint64_t *)memRead(savePointer - 8, 8))[0] );
+    UART_printf("Retreive Power_int: %d\r\n", (int)chan0_integral);
+    UART_printf("Retreive Power_int: %d\r\n", (int)power_integral);
 	
 	/* Set LEDs to known states, i.e. on */
 	red_led(1);

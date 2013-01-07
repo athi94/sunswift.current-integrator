@@ -140,6 +140,12 @@ uint8_t * memRead(uint16_t startAddress, uint8_t readLength) {
     
     UART_printf("I2C Read Success: %d \r\n", (int)I2CEngine());
     
+    //uint8_t i;
+    //uint8_t returnArray[readLength];
+    //for (i = 0; i < readLength; i++) {
+    //    returnArray[i] = I2CSlaveBuffer[i];
+    //}
+    
     return I2CSlaveBuffer;
 }
 
