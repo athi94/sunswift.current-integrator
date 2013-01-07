@@ -9,6 +9,7 @@
 
 #include <project/driver_config.h>
 #include <project/fm24cl64.h>
+#include <project/ansi_color.h>
 
 #include <scandal/stdio.h>
 
@@ -89,7 +90,7 @@ void memWrite(uint16_t startAddress, uint8_t writeLength, uint8_t *writebuf) {
     // writebuf is the data to be written, Maximum size is 61 elements
     
     UART_printf("Starting memWrite...\r\n");
-    UART_printf("[ Address: %d ] [ WriteLength: %d ]\r\n", (int)startAddress, (int)writeLength);
+    UART_printf(ANSI_BLUE"[ Address: %d ] [ WriteLength: %d ]\r\n"ANSI_RESET, (int)startAddress, (int)writeLength);
     // Setup I2C For Write Operation
     I2CWriteLength = 3 + writeLength;
     I2CReadLength = 0;

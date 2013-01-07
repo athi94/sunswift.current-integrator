@@ -12,6 +12,7 @@
 #include <project/mcp3909.h>
 #include <project/scandal_config.h>
 #include <project/fm24cl64.h>
+#include <project/ansi_color.h>
 
 #include <arch/timer.h>
 #include <arch/gpio.h>
@@ -117,8 +118,8 @@ int main(void)
     uint16_t savePointer = memGetPointer();
     chan0_integral = ( ((uint64_t *)memRead(savePointer - 16, 8))[0] );
     power_integral = ( ((uint64_t *)memRead(savePointer - 8, 8))[0] );
-    UART_printf("Retreive Power_int: %d\r\n", (int)chan0_integral);
-    UART_printf("Retreive Power_int: %d\r\n", (int)power_integral);
+    UART_printf(ANSI_RED"Retreive Power_int: %d\r\n"ANSI_RESET, (int)chan0_integral);
+    UART_printf(ANSI_RED"Retreive Power_int: %d\r\n"ANSI_RESET, (int)power_integral);
 	
 	/* Set LEDs to known states, i.e. on */
 	red_led(1);
@@ -160,7 +161,9 @@ int main(void)
 			/* Twiddle the LEDs */
 			toggle_red_led();
 
-			UART_printf("time = %d, int_t = %d, send_t = %d, save_t = %d\r\n", (int)one_sec_timer, (int)data_integrate_timer, (int)data_send_timer, (int)data_save_timer);
+			UART_printf(ANSI_GREEN"time = %d, int_t = %d, send_t = %d, save_t = %d\r\n"ANSI_RESET, 
+                        (int)one_sec_timer, (int)data_integrate_timer, 
+                        (int)data_send_timer, (int)data_save_timer);
 
 			/* Update the timer */
 			one_sec_timer = sc_get_timer();
@@ -234,7 +237,7 @@ int main(void)
             // memWrite (startAddress, writeLength, writebuf)
             memWriteSeq(memGetPointer(), 16, (uint8_t *)writebuf);
             
-            UART_printf("chan0_int = %d | power_int = %d\r\n", (int)(writebuf[0]), (int)(writebuf[1]));
+            UART_printf(ANSI_RED"chan0_int = %d | power_int = %d\r\n"ANSI_RESET, (int)(writebuf[0]), (int)(writebuf[1]));
             // Read Data for Debug
             uint64_t *readbuf = (uint64_t *)memRead(0x02, 64);
             
