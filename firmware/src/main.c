@@ -103,7 +103,7 @@ int main(void)
 	UART_Init(115200);
 
     // Init FM24CL64, set argument to 1 to reset memory, 0 to keep memory
-    memInit(1);
+    memInit(0);
     
 	/* Initialise timers */
 	sc_time_t one_sec_timer = sc_get_timer();
@@ -119,7 +119,7 @@ int main(void)
     uint8_t match = 0;
     uint8_t blockCounter;
     uint8_t currentBlock = ((memGetPointer()-2)/18)-1;
-    for (blockCounter = 0; (blockCounter < 4) && (match == 0); i++) {
+    for (blockCounter = 0; (blockCounter < 4) && (match == 0); blockCounter++) {
         uint8_t *savedBlock;
         if ((currentBlock - blockCounter) >= 0 ) {
             savedBlock = memReadBlock(currentBlock - blockCounter);
@@ -130,7 +130,7 @@ int main(void)
         checkData[0] = memGetChan0_int(savedBlock);
         checkData[1] = memGetPower_int(savedBlock);
     
-        if (memGetCRC(savedBlock) == crcCompute((uint8_t *)checkData, 16)) {
+        if ((memGetCRC(savedBlock) == crcCompute((uint8_t *)checkData, 16)) && (memGetCRC(savedBlock) != 0)) {
             UART_printf(ANSI_RED"CRC Match\r\n"ANSI_RESET);
             chan0_integral = checkData[0];
             power_integral = checkData[1];
