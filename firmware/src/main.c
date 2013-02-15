@@ -13,6 +13,7 @@
 #include <project/scandal_config.h>
 #include <project/fm24cl64.h>
 #include <project/ansi_color.h>
+#include <project/crc.h>
 
 #include <arch/timer.h>
 #include <arch/gpio.h>
@@ -102,7 +103,7 @@ int main(void)
 	UART_Init(115200);
 
     // Init FM24CL64, set argument to 1 to reset memory, 0 to keep memory
-    memInit(0);
+    memInit(1);
     
 	/* Initialise timers */
 	sc_time_t one_sec_timer = sc_get_timer();
@@ -115,11 +116,37 @@ int main(void)
     //sc_user_eeprom_read_block(0, (uint8_t *)&chan0_integral, 8);
     //sc_user_eeprom_read_block(8, (uint8_t *)&power_integral, 8);
     
-    uint16_t savePointer = memGetPointer();
-    chan0_integral = ( ((uint64_t *)memRead(savePointer - 16, 8))[0] );
-    power_integral = ( ((uint64_t *)memRead(savePointer - 8, 8))[0] );
-    UART_printf(ANSI_RED"Retreive Power_int: %d\r\n"ANSI_RESET, (int)chan0_integral);
-    UART_printf(ANSI_RED"Retreive Power_int: %d\r\n"ANSI_RESET, (int)power_integral);
+    uint8_t match = 0;
+    uint8_t blockCounter;
+    uint8_t currentBlock = ((memGetPointer()-2)/18)-1;
+    for (blockCounter = 0; (blockCounter < 4) && (match == 0); i++) {
+        uint8_t *savedBlock;
+        if ((currentBlock - blockCounter) >= 0 ) {
+            savedBlock = memReadBlock(currentBlock - blockCounter);
+        } else {
+            savedBlock = memReadBlock((currentBlock - blockCounter) + 114);
+        }
+        uint64_t checkData[2];
+        checkData[0] = memGetChan0_int(savedBlock);
+        checkData[1] = memGetPower_int(savedBlock);
+    
+        if (memGetCRC(savedBlock) == crcCompute((uint8_t *)checkData, 16)) {
+            UART_printf(ANSI_RED"CRC Match\r\n"ANSI_RESET);
+            chan0_integral = checkData[0];
+            power_integral = checkData[1];
+            match = 1;
+        } else {
+            UART_printf(ANSI_RED"CRC Does Not Match\r\n"ANSI_RESET);
+        }
+    }
+    
+    if (match == 0) {
+        chan0_integral = 0;
+        power_integral = 0;
+    }
+    
+    UART_printf(ANSI_RED"Retrieve Chan0_int: %d\r\n"ANSI_RESET, (int)chan0_integral);
+    UART_printf(ANSI_RED"Retrieve Power_int: %d\r\n"ANSI_RESET, (int)power_integral);
 	
 	/* Set LEDs to known states, i.e. on */
 	red_led(1);
@@ -227,25 +254,32 @@ int main(void)
 		/* Save integrated values to flash every DATA_SAVE_INTERVAL */
 		if (sc_get_timer() >= data_save_timer + DATA_SAVE_INTERVAL) {
 			
+            /****************************************************************
+             * FM24CL64 Stuff                                               *
+             ***************************************************************/
 			writebuf[0] = chan0_integral;
 			writebuf[1] = power_integral;
             
-			sc_user_eeprom_write_block(0, (uint8_t *)writebuf, 16);
+			// sc_user_eeprom_write_block(0, (uint8_t *)writebuf, 16);
             
             // Start FM24CL64 Save Proc
             // Review FM24CL64.h for details
-            // memWrite (startAddress, writeLength, writebuf)
-            memWriteSeq(memGetPointer(), 16, (uint8_t *)writebuf);
+            // memWriteBlock (writebuf, writeLength)
+            memWriteBlock ((uint8_t *)writebuf, 16);
             
             UART_printf(ANSI_RED"chan0_int = %d | power_int = %d\r\n"ANSI_RESET, (int)(writebuf[0]), (int)(writebuf[1]));
-            // Read Data for Debug
-            uint64_t *readbuf = (uint64_t *)memRead(0x02, 64);
             
-            uint8_t i;
-            for(i = 0; i < 8; i+=2) {
-                UART_printf("channel0 = %d  |  ", (int)(readbuf[i]));
-                UART_printf("power = %d\r\n", (int)(readbuf[i + 1]));
-            }
+            // Output Debug
+            uint8_t *block0 = memReadBlock(((memGetPointer()-2)/18)-1);
+            
+            UART_printf("Block - chan0_int: %d\r\n", (int)memGetChan0_int(block0));
+            UART_printf("Block - power_int: %d\r\n", (int)memGetPower_int(block0));
+            UART_printf("Block - CRC: %d\r\n", (int)memGetCRC(block0));
+            
+            
+            /****************************************************************
+             * FM24CL64 Stuff END                                           *
+             ***************************************************************/
             
             
 			/* Acknowledge the fact that we just did a flash write */

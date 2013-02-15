@@ -24,7 +24,7 @@ OBJECTS += engine.o error.o manager.o maths.o message.o utils.o stdio.o leds.o w
 # Driver objects
 OBJECTS += can.o flash.o uart.o gpio.o timer.o wdt.o system.o mcp3909.o
 # Add other objects here or in the architecture specific makefile
-OBJECTS += fm24cl64.o
+OBJECTS += fm24cl64.o crc.o
 
 CFLAGS  = -I$(SCANDAL)/include # for scandal includes
 CFLAGS += -I$(ARCH)/include # for arch drivers

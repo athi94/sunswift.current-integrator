@@ -10,6 +10,7 @@
 #include <project/driver_config.h>
 #include <project/fm24cl64.h>
 #include <project/ansi_color.h>
+#include <project/crc.h>
 
 #include <scandal/stdio.h>
 
@@ -195,4 +196,59 @@ void memWriteSeq(uint16_t startAddress, uint8_t writeLength, uint8_t *writebuf) 
         newPointer[1] = (startAddress + writeLength);
         memWrite(0x00, 2, newPointer);
     }
+}
+
+// Wrappers
+void memWriteBlock (uint8_t *data, uint8_t length) {
+    
+    
+    /************************************************************************
+     *   |  chan0_int |  power_int |  crcString |                           *
+     *   |  uint64_t  |  uint64_t  |  uint16_t  |                           *
+     ***********************************************************************/
+    
+    // CRC data
+    uint16_t crcString;
+    crcString = crcCompute(data, length);
+    
+    UART_printf(ANSI_BLUE"CRCPre = %d\r\n"ANSI_RESET, (int)crcString);
+    
+    uint8_t block[BLOCK_SIZE];
+    
+    // Add Data
+    int i;
+    for (i = 0; i < length; i++) {
+        block[i] = data[i];
+    }
+    
+    // Add CRC
+    block[i] = (crcString>>8);
+    block[i + 1] = crcString;
+    
+    
+    memWriteSeq(memGetPointer(), BLOCK_SIZE, block);
+}
+
+uint8_t *memReadBlock (uint8_t blockNumber) {
+    uint16_t startAddress = (blockNumber * BLOCK_SIZE) + 2;
+    return memRead(startAddress, BLOCK_SIZE);
+}
+
+uint64_t memGetChan0_int(uint8_t *block) {
+    // Retrieve chan0_int
+    return ((uint64_t *)block)[0];
+}
+
+uint64_t memGetPower_int(uint8_t *block) {
+    // Retrieve power_int
+    return ((uint64_t *)block)[1];
+}
+
+uint16_t memGetCRC(uint8_t *block) {
+    // Retrieve CRC
+    uint16_t CRC = 0;
+    CRC = block[16];
+    CRC = (CRC<<8) | block[17];
+    
+    return CRC;
 }
